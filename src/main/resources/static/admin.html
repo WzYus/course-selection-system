@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园管理系统 - 管理员后台</title>
+    <!-- Vue 2 核心库 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <!-- Axios HTTP 客户端 -->
+    <script src="https://unpkg.com/axios@1.6.2/dist/axios.min.js"></script>
+    <style>
+        /* ========== 全局样式 & 布局 ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'PingFang SC', Roboto, sans-serif;
+        }
+        body {
+            background: #f1f5f9;
+        }
+        /* 左右两栏布局：侧边栏 + 主内容区 */
+        .admin-container {
+            display: flex;
+            height: 100vh;
+        }
+        /* 侧边栏 (深色主题) */
+        .sidebar {
+            width: 260px;
+            background: #1e293b;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+        }
+        .logo {
+            padding: 24px 20px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            border-bottom: 1px solid #334155;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        .menu {
+            flex: 1;
+        }
+        .menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+        }
+        .menu-item:hover {
+            background: #334155;
+        }
+        .menu-item.active {
+            background: #4f46e5;
+            color: white;
+        }
+        .user-info {
+            padding: 20px;
+            border-top: 1px solid #334155;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logout-btn {
+            background: #dc2626;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        /* 主内容卡片区 */
+        .main-content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .card-header h2 {
+            font-size: 1.3rem;
+            color: #0f172a;
+        }
+        /* 按钮样式 */
+        .btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            background: #4f46e5;
+            color: white;
+        }
+        .btn-danger {
+            background: #ef4444;
+        }
+        .btn-secondary {
+            background: #64748b;
+        }
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+        /* 筛选栏 */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-bar input, .filter-bar select {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        /* 分页组件 */
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .page-btn {
+            padding: 6px 12px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        .page-btn.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        /* 状态徽章 */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+        .status-enabled {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .status-disabled {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        /* 模态框 (弹窗) */
+        .modal-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-container {
+            background: white;
+            width: 500px;
+            max-width: 90%;
+            border-radius: 16px;
+            padding: 20px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .modal-body .form-group {
+            margin-bottom: 16px;
+        }
+        .modal-body label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .modal-body input, .modal-body select, .modal-body textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .error-msg {
+            color: #dc2626;
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+        .success-msg {
+            color: #16a34a;
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="admin-container">
+        <!-- 侧边栏导航 -->
+        <div class="sidebar">
+            <div class="logo">
+                <img src="/images/5120234579.png" alt="校徽">
+                <span>校园管理系统</span>
+            </div>
+            <div class="menu">
+                <div class="menu-item" :class="{ active: currentMenu === 'users' }" @click="currentMenu = 'users'">
+                    👥 用户管理
+                </div>
+                <div class="menu-item" :class="{ active: currentMenu === 'courses' }" @click="currentMenu = 'courses'">
+                    📚 课程管理
+                </div>
+                <div class="menu-item" :class="{ active: currentMenu === 'enrollments' }" @click="currentMenu = 'enrollments'">
+                    📋 选课记录
+                </div>
+            </div>
+            <div class="user-info">
+                <div>
+                    <div>{{ username }}</div>
+                    <div style="font-size: 0.7rem; opacity: 0.7;">管理员</div>
+                </div>
+                <button class="logout-btn" @click="logout">退出</button>
+            </div>
+        </div>
+
+        <!-- ================= 主内容区域（动态渲染） ================= -->
+        <div class="main-content">
+            <!-- 用户管理面板 -->
+            <div v-if="currentMenu === 'users'">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>用户管理</h2>
+                        <div>
+                            <button class="btn" @click="openCreateUserModal('student')">+ 创建学生</button>
+                            <button class="btn btn-secondary" @click="openCreateUserModal('teacher')" style="margin-left: 8px;">+ 创建教师</button>
+                            <button class="btn btn-secondary" @click="openCreateUserModal('admin')" style="margin-left: 8px;">+ 创建管理员</button>
+                        </div>
+                    </div>
+                    <div class="filter-bar">
+                        <select v-model="userRoleFilter">
+                            <option value="">全部角色</option>
+                            <option value="ROLE_STUDENT">学生</option>
+                            <option value="ROLE_TEACHER">教师</option>
+                            <option value="ROLE_ADMIN">管理员</option>
+                        </select>
+                        <button class="btn-sm" @click="loadUsers">筛选</button>
+                    </div>
+                    <div v-if="usersLoading" class="loading">加载中...</div>
+                    <table v-else>
+                        <thead>
+                        <tr><th>ID</th><th>用户名</th><th>角色</th><th>姓名</th><th>状态</th><th>操作</th>\
+                        </thead>
+                        <tbody>
+                        <tr v-for="user in usersList" :key="user.id">
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.role }}</td>
+                            <td>{{ user.name || '-' }}</td>
+                            <td>
+                                    <span class="status-badge" :class="user.enabled ? 'status-enabled' : 'status-disabled'">
+                                        {{ user.enabled ? '启用' : '禁用' }}
+                                    </span>
+                            </td>
+                            <td>
+                                <button class="btn-sm" @click="toggleUserStatus(user.id, !user.enabled)">
+                                    {{ user.enabled ? '禁用' : '启用' }}
+                                </button>
+                                <button class="btn-sm btn-danger" @click="deleteUser(user.id, user.role)" style="margin-left: 4px;">删除</button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="pagination">
+                        <button class="page-btn" :disabled="userPage === 0" @click="userPage--">上一页</button>
+                        <span>第 {{ userPage+1 }} / {{ userTotalPages }} 页</span>
+                        <button class="page-btn" :disabled="userPage >= userTotalPages-1" @click="userPage++">下一页</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 课程管理面板 -->
+            <div v-if="currentMenu === 'courses'">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>课程管理</h2>
+                        <button class="btn" @click="openCreateCourseModal">+ 创建课程</button>
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" v-model="courseFilter.name" placeholder="课程名称">
+                        <button class="btn-sm" @click="loadCourses">搜索</button>
+                    </div>
+                    <div v-if="coursesLoading" class="loading">加载中...</div>
+                    <table v-else>
+                        <thead>
+                        <tr><th>ID</th><th>课程编号</th><th>课程名称</th><th>学分</th><th>教师</th><th>容量</th><th>已选</th><th>操作</th>\
+                        </thead>
+                        <tbody>
+                        <tr v-for="course in coursesList" :key="course.id">
+                            <td>{{ course.id }}</td>
+                            <td>{{ course.courseCode }}</td>
+                            <td>{{ course.name }}</td>
+                            <td>{{ course.credit }}</td>
+                            <td>{{ course.teacher }}</td>
+                            <td>{{ course.capacity }}</td>
+                            <td>{{ course.selectedCount }}</td>
+                            <td>
+                                <button class="btn-sm" @click="editCourse(course)">编辑</button>
+                                <button class="btn-sm btn-danger" @click="deleteCourse(course.id)" style="margin-left: 4px;">删除</button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="pagination">
+                        <button class="page-btn" :disabled="coursePage === 0" @click="coursePage--">上一页</button>
+                        <span>第 {{ coursePage+1 }} / {{ courseTotalPages }} 页</span>
+                        <button class="page-btn" :disabled="coursePage >= courseTotalPages-1" @click="coursePage++">下一页</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 选课记录查询面板 -->
+            <div v-if="currentMenu === 'enrollments'">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>选课记录</h2>
+                    </div>
+                    <div class="filter-bar">
+                        <select v-model="enrollmentFilter.courseId">
+                            <option value="">全部课程</option>
+                            <option v-for="course in allCourses" :key="course.id" :value="course.id">
+                                {{ course.name }} (ID: {{ course.id }})
+                            </option>
+                        </select>
+                        <input type="text" v-model="enrollmentFilter.year" placeholder="年份">
+                        <button class="btn-sm" @click="loadEnrollments">查询</button>
+                    </div>
+                    <div v-if="enrollmentsLoading" class="loading">加载中...</div>
+                    <table v-else>
+                        <thead>
+                        <tr><th>选课ID</th><th>学生姓名</th><th>学号</th><th>课程名称</th><th>课程编号</th><th>年份</th><th>成绩</th>\
+                        </thead>
+                        <tbody>
+                        <tr v-for="e in enrollmentsList" :key="e.enrollmentId">
+                            <td>{{ e.enrollmentId }}</td>
+                            <td>{{ e.studentName }}</td>
+                            <td>{{ e.studentNumber }}</td>
+                            <td>{{ e.courseName }}</td>
+                            <td>{{ e.courseCode }}</td>
+                            <td>{{ e.year }}</td>
+                            <td>{{ e.grade }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="pagination">
+                        <button class="page-btn" :disabled="enrollmentPage === 0" @click="enrollmentPage--">上一页</button>
+                        <span>第 {{ enrollmentPage+1 }} / {{ enrollmentTotalPages }} 页</span>
+                        <button class="page-btn" :disabled="enrollmentPage >= enrollmentTotalPages-1" @click="enrollmentPage++">下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 创建/编辑用户模态框 ================= -->
+    <div class="modal-mask" v-if="showUserModal" @click.self="closeModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>{{ modalTitle }}</h3>
+                <button @click="closeModal" style="background: none; border: none; font-size: 20px;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input v-model="userForm.username">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" v-model="userForm.password">
+                </div>
+                <!-- 学生专属字段 -->
+                <div class="form-group" v-if="userRole === 'student'">
+                    <label>姓名</label>
+                    <input v-model="userForm.name">
+                    <label>年龄</label>
+                    <input type="number" v-model="userForm.age">
+                    <label>学号</label>
+                    <input v-model="userForm.studentNumber">
+                    <label>专业</label>
+                    <input v-model="userForm.major">
+                    <label>年级</label>
+                    <input v-model="userForm.grade">
+                </div>
+                <!-- 教师专属字段 -->
+                <div class="form-group" v-if="userRole === 'teacher'">
+                    <label>姓名</label>
+                    <input v-model="userForm.name">
+                    <label>工号</label>
+                    <input v-model="userForm.teacherNumber">
+                    <label>职称</label>
+                    <input v-model="userForm.title">
+                    <label>院系</label>
+                    <input v-model="userForm.department">
+                </div>
+                <!-- 管理员专属字段 -->
+                <div class="form-group" v-if="userRole === 'admin'">
+                    <label>姓名</label>
+                    <input v-model="userForm.name">
+                    <label>电话</label>
+                    <input v-model="userForm.phone">
+                </div>
+                <div v-if="modalError" class="error-msg">{{ modalError }}</div>
+                <div v-if="modalSuccess" class="success-msg">{{ modalSuccess }}</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-sm" @click="closeModal">取消</button>
+                <button class="btn-sm" @click="submitUser">提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 创建/编辑课程模态框 ================= -->
+    <div class="modal-mask" v-if="showCourseModal" @click.self="closeCourseModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>{{ courseModalTitle }}</h3>
+                <button @click="closeCourseModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>课程编号</label>
+                    <input v-model="courseForm.courseCode" :disabled="!!editingCourseId">
+                </div>
+                <div class="form-group">
+                    <label>课程名称</label>
+                    <input v-model="courseForm.name">
+                </div>
+                <div class="form-group">
+                    <label>学分</label>
+                    <input type="number" v-model="courseForm.credit">
+                </div>
+                <div class="form-group">
+                    <label>教师ID</label>
+                    <input type="number" v-model="courseForm.teacherId" placeholder="可选">
+                </div>
+                <div class="form-group">
+                    <label>上课时间</label>
+                    <input v-model="courseForm.schedule">
+                </div>
+                <div class="form-group">
+                    <label>容量</label>
+                    <input type="number" v-model="courseForm.capacity">
+                </div>
+                <div class="form-group">
+                    <label>课程描述</label>
+                    <textarea v-model="courseForm.description" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-sm" @click="closeCourseModal">取消</button>
+                <button class="btn-sm" @click="submitCourse">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // Axios 实例配置：统一 baseURL 及请求/响应拦截器
+    // --------------------------------------------------------------
+    const api = axios.create({
+        baseURL: '',
+        timeout: 10000
+    });
+
+    // 请求拦截器：自动携带 JWT Token
+    api.interceptors.request.use(config => {
+        const token = localStorage.getItem('jwt_token');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+    });
+
+    // 响应拦截器：处理 401 未授权，自动跳转登录页
+    api.interceptors.response.use(
+        response => response,
+        error => {
+            if (error.response && error.response.status === 401) {
+                localStorage.removeItem('jwt_token');
+                window.location.href = '/index.html';
+            }
+            return Promise.reject(error);
+        }
+    );
+
+    new Vue({
+        el: '#app',
+        data: {
+            // 当前激活的菜单项
+            currentMenu: 'users',
+            username: localStorage.getItem('username') || 'Admin',
+
+            // ---------- 用户管理模块 ----------
+            usersList: [],
+            userPage: 0,
+            userTotalPages: 0,
+            userRoleFilter: '',
+            usersLoading: false,
+
+            // ---------- 课程管理模块 ----------
+            coursesList: [],
+            coursePage: 0,
+            courseTotalPages: 0,
+            courseFilter: { name: '' },
+            coursesLoading: false,
+
+            // ---------- 选课记录模块 ----------
+            enrollmentsList: [],
+            enrollmentPage: 0,
+            enrollmentTotalPages: 0,
+            enrollmentFilter: { courseId: '', year: '' },
+            enrollmentsLoading: false,
+            allCourses: [],         // 用于下拉框的全量课程列表
+
+            // ---------- 用户模态框 ----------
+            showUserModal: false,
+            userRole: 'student',    // 'student', 'teacher', 'admin'
+            userForm: {},
+            modalError: '',
+            modalSuccess: '',
+
+            // ---------- 课程模态框 ----------
+            showCourseModal: false,
+            editingCourseId: null,
+            courseForm: {},
+            courseModalTitle: '创建课程'
+        },
+
+        // 监听分页页码变化，自动重新加载数据
+        watch: {
+            userPage() { this.loadUsers(); },
+            coursePage() { this.loadCourses(); },
+            enrollmentPage() { this.loadEnrollments(); }
+        },
+
+        mounted() {
+            // 页面初始化加载所有数据
+            this.loadUsers();
+            this.loadCourses();
+            this.loadEnrollments();
+            this.loadAllCourses();
+        },
+
+        methods: {
+            // ========== 通用 ==========
+            /** 退出登录，清除本地凭证并返回登录页 */
+            logout() {
+                localStorage.removeItem('jwt_token');
+                localStorage.removeItem('username');
+                window.location.href = '/index.html';
+            },
+
+            // ========== 用户管理 API ==========
+            /** 加载用户列表（支持分页和角色筛选） */
+            async loadUsers() {
+                this.usersLoading = true;
+                try {
+                    const params = { page: this.userPage, size: 10 };
+                    if (this.userRoleFilter) params.role = this.userRoleFilter;
+                    const res = await api.get('/api/admin/users', { params });
+                    this.usersList = res.data.content;
+                    this.userTotalPages = res.data.totalPages;
+                } catch (err) {
+                    console.error(err);
+                    alert('加载用户失败');
+                } finally {
+                    this.usersLoading = false;
+                }
+            },
+
+            /** 启用/禁用用户账号 */
+            async toggleUserStatus(userId, enabled) {
+                try {
+                    await api.put(`/api/admin/users/${userId}/status?enabled=${enabled}`);
+                    this.loadUsers();
+                } catch (err) {
+                    alert('操作失败');
+                }
+            },
+
+            /** 删除用户（根据角色调用不同接口） */
+            async deleteUser(userId, role) {
+                if (!confirm('确定删除该用户吗？相关数据将被永久删除')) return;
+                try {
+                    let url = '';
+                    if (role === 'ROLE_STUDENT') url = `/api/admin/students/${userId}`;
+                    else if (role === 'ROLE_TEACHER') url = `/api/admin/teachers/${userId}`;
+                    else url = `/api/admin/admins/${userId}`;
+                    await api.delete(url);
+                    this.loadUsers();
+                } catch (err) {
+                    alert('删除失败');
+                }
+            },
+
+            /** 打开创建用户模态框，根据角色初始化表单 */
+            openCreateUserModal(role) {
+                this.userRole = role;
+                this.userForm = {
+                    username: '', password: '', name: '',
+                    age: null, studentNumber: '', major: '', grade: '',
+                    teacherNumber: '', title: '', department: '',
+                    phone: ''
+                };
+                this.modalError = '';
+                this.modalSuccess = '';
+                this.showUserModal = true;
+            },
+
+            /** 提交创建用户请求 */
+            async submitUser() {
+                this.modalError = '';
+                this.modalSuccess = '';
+                try {
+                    let url = '';
+                    let data = {};
+                    if (this.userRole === 'student') {
+                        url = '/api/admin/students';
+                        data = {
+                            username: this.userForm.username,
+                            password: this.userForm.password,
+                            name: this.userForm.name,
+                            age: this.userForm.age,
+                            studentNumber: this.userForm.studentNumber,
+                            major: this.userForm.major,
+                            grade: this.userForm.grade
+                        };
+                    } else if (this.userRole === 'teacher') {
+                        url = '/api/admin/teachers';
+                        data = {
+                            username: this.userForm.username,
+                            password: this.userForm.password,
+                            name: this.userForm.name,
+                            teacherNumber: this.userForm.teacherNumber,
+                            title: this.userForm.title,
+                            department: this.userForm.department
+                        };
+                    } else {
+                        url = '/api/admin/admins';
+                        data = {
+                            username: this.userForm.username,
+                            password: this.userForm.password,
+                            name: this.userForm.name,
+                            phone: this.userForm.phone
+                        };
+                    }
+                    await api.post(url, data);
+                    this.modalSuccess = '创建成功';
+                    setTimeout(() => {
+                        this.closeModal();
+                        this.loadUsers();
+                    }, 1000);
+                } catch (err) {
+                    this.modalError = err.response?.data?.message || '创建失败';
+                }
+            },
+
+            /** 关闭用户模态框并清空状态 */
+            closeModal() {
+                this.showUserModal = false;
+                this.modalError = '';
+                this.modalSuccess = '';
+            },
+
+            // ========== 课程管理 API ==========
+            /** 加载课程列表（分页 + 名称筛选） */
+            async loadCourses() {
+                this.coursesLoading = true;
+                try {
+                    const params = {
+                        page: this.coursePage,
+                        size: 10,
+                        name: this.courseFilter.name
+                    };
+                    const res = await api.get('/api/courses', { params });
+                    this.coursesList = res.data.content;
+                    this.courseTotalPages = res.data.totalPages;
+                } catch (err) {
+                    console.error(err);
+                } finally {
+                    this.coursesLoading = false;
+                }
+            },
+
+            /** 加载所有课程（用于选课记录页的下拉框） */
+            async loadAllCourses() {
+                try {
+                    const res = await api.get('/api/courses', { params: { size: 1000 } });
+                    this.allCourses = res.data.content;
+                } catch (err) {
+                    console.error('加载课程列表失败', err);
+                }
+            },
+
+            /** 打开创建课程模态框 */
+            openCreateCourseModal() {
+                this.editingCourseId = null;
+                this.courseForm = {
+                    courseCode: '', name: '', credit: null, teacherId: null,
+                    schedule: '', capacity: null, description: ''
+                };
+                this.courseModalTitle = '创建课程';
+                this.showCourseModal = true;
+            },
+
+            /** 编辑课程：回填数据 */
+            editCourse(course) {
+                this.editingCourseId = course.id;
+                this.courseForm = {
+                    courseCode: course.courseCode,
+                    name: course.name,
+                    credit: course.credit,
+                    teacherId: null,
+                    schedule: course.schedule,
+                    capacity: course.capacity,
+                    description: course.description
+                };
+                this.courseModalTitle = '编辑课程';
+                this.showCourseModal = true;
+            },
+
+            /** 提交课程创建/更新 */
+            async submitCourse() {
+                try {
+                    const data = { ...this.courseForm };
+                    if (this.editingCourseId) {
+                        await api.put(`/api/admin/courses/${this.editingCourseId}`, data);
+                    } else {
+                        await api.post('/api/admin/courses', data);
+                    }
+                    this.closeCourseModal();
+                    this.loadCourses();
+                } catch (err) {
+                    alert('保存失败');
+                }
+            },
+
+            /** 删除课程 */
+            async deleteCourse(courseId) {
+                if (!confirm('确定删除课程吗？')) return;
+                try {
+                    await api.delete(`/api/admin/courses/${courseId}`);
+                    this.loadCourses();
+                } catch (err) {
+                    alert('删除失败');
+                }
+            },
+
+            /** 关闭课程模态框 */
+            closeCourseModal() {
+                this.showCourseModal = false;
+            },
+
+            // ========== 选课记录 API ==========
+            /** 加载选课记录（支持课程ID和年份筛选） */
+            async loadEnrollments() {
+                this.enrollmentsLoading = true;
+                try {
+                    const params = {
+                        page: this.enrollmentPage,
+                        size: 10,
+                        courseId: this.enrollmentFilter.courseId || null,
+                        year: this.enrollmentFilter.year || null
+                    };
+                    const res = await api.get('/api/admin/enrollments', { params });
+                    this.enrollmentsList = res.data.content;
+                    this.enrollmentTotalPages = res.data.totalPages;
+                } catch (err) {
+                    console.error(err);
+                } finally {
+                    this.enrollmentsLoading = false;
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>

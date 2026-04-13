@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生工作台 - 校园管理系统</title>
+  <!-- Vue 2 核心库 -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+  <!-- Axios HTTP 客户端 -->
+  <script src="https://unpkg.com/axios@1.6.2/dist/axios.min.js"></script>
+  <style>
+    /* ========== 全局样式与布局 ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, 'Segoe UI', 'PingFang SC', Roboto, sans-serif;
+    }
+    body {
+      background: #f1f5f9;
+    }
+    /* 应用容器：垂直排列 */
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    /* 顶部导航栏 */
+    .top-bar {
+      background: white;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-area img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+    }
+    .logo-area span {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #0f172a;
+    }
+    .user-area {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .user-name {
+      font-weight: 500;
+    }
+    .logout-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    /* 主体布局：侧边栏 + 内容区 */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    /* 侧边栏菜单 */
+    .sidebar {
+      width: 240px;
+      background: white;
+      border-right: 1px solid #e2e8f0;
+      padding: 20px 0;
+    }
+    .menu-item {
+      padding: 12px 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #334155;
+      font-weight: 500;
+    }
+    .menu-item:hover {
+      background: #f1f5f9;
+    }
+    .menu-item.active {
+      background: #eef2ff;
+      color: #4f46e5;
+      border-right: 3px solid #4f46e5;
+    }
+    /* 内容区域滚动 */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    /* 卡片组件 */
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 12px;
+    }
+    .card-header h2 {
+      font-size: 1.2rem;
+      color: #0f172a;
+    }
+    /* 按钮样式 */
+    .btn {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .btn-sm {
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-danger {
+      background: #ef4444;
+    }
+    .btn-secondary {
+      background: #64748b;
+    }
+    /* 表格样式 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+      background: #f8fafc;
+      font-weight: 600;
+    }
+    /* 筛选栏 */
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    /* 分页组件 */
+    .pagination {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .page-btn {
+      padding: 6px 12px;
+      border: 1px solid #cbd5e1;
+      background: white;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+    }
+    /* 表单组 */
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #334155;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+    }
+    /* 消息提示 */
+    .message {
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    .error-msg {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .success-msg {
+      background: #dcfce7;
+      color: #166534;
+    }
+    /* 课表专用表格 */
+    .timetable-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .timetable-table th, .timetable-table td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 6px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .timetable-table th {
+      background: #f1f5f9;
+      font-weight: 600;
+    }
+    .section-col {
+      background: #f8fafc;
+      font-weight: 500;
+    }
+    .course-cell {
+      min-height: 45px;
+      word-break: break-word;
+      color: #0f172a;
+    }
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      background: #dcfce7;
+      color: #166534;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-container">
+    <!-- 顶部导航栏 -->
+    <div class="top-bar">
+      <div class="logo-area">
+        <img src="/images/5120234579.png" alt="校徽">
+        <span>校园管理系统</span>
+      </div>
+      <div class="user-area">
+        <span class="user-name">{{ username }} (学生)</span>
+        <button class="logout-btn" @click="logout">退出登录</button>
+      </div>
+    </div>
+    <div class="main-layout">
+      <!-- 侧边栏菜单导航 -->
+      <div class="sidebar">
+        <div class="menu-item" :class="{ active: currentMenu === 'profile' }" @click="currentMenu = 'profile'">
+          👤 个人信息
+        </div>
+        <div class="menu-item" :class="{ active: currentMenu === 'courses' }" @click="currentMenu = 'courses'">
+          📚 课程浏览
+        </div>
+        <div class="menu-item" :class="{ active: currentMenu === 'myEnrollments' }" @click="currentMenu = 'myEnrollments'">
+          ✅ 我的选课
+        </div>
+        <div class="menu-item" :class="{ active: currentMenu === 'timetable' }" @click="currentMenu = 'timetable'">
+          📅 个人课表
+        </div>
+        <div class="menu-item" :class="{ active: currentMenu === 'grades' }" @click="currentMenu = 'grades'">
+          🎓 成绩查询
+        </div>
+      </div>
+
+      <!-- 动态内容区域 -->
+      <div class="content">
+        <!-- ================= 个人信息面板 ================= -->
+        <div v-if="currentMenu === 'profile'">
+          <div class="card">
+            <div class="card-header">
+              <h2>个人信息</h2>
+              <button class="btn" @click="editMode = !editMode">{{ editMode ? '取消' : '编辑' }}</button>
+            </div>
+            <div v-if="profileLoading" class="loading">加载中...</div>
+            <div v-else>
+              <!-- 只读展示模式 -->
+              <div v-if="!editMode">
+                <p><strong>姓名：</strong> {{ profile.name }}</p>
+                <p><strong>学号：</strong> {{ profile.studentNumber }}</p>
+                <p><strong>年龄：</strong> {{ profile.age }}</p>
+                <p><strong>专业：</strong> {{ profile.major || '-' }}</p>
+                <p><strong>年级：</strong> {{ profile.grade || '-' }}</p>
+                <p><strong>用户名：</strong> {{ profile.username }}</p>
+              </div>
+              <!-- 编辑模式 -->
+              <div v-else>
+                <div class="form-group">
+                  <label>姓名</label>
+                  <input v-model="editProfile.name">
+                </div>
+                <div class="form-group">
+                  <label>年龄</label>
+                  <input type="number" v-model="editProfile.age">
+                </div>
+                <div class="form-group">
+                  <label>专业</label>
+                  <input v-model="editProfile.major">
+                </div>
+                <div class="form-group">
+                  <label>年级</label>
+                  <input v-model="editProfile.grade">
+                </div>
+                <div class="form-group">
+                  <label>邮箱</label>
+                  <input type="email" v-model="editProfile.email">
+                </div>
+                <button class="btn" @click="updateProfile">保存修改</button>
+              </div>
+            </div>
+          </div>
+          <!-- 修改密码卡片 -->
+          <div class="card">
+            <div class="card-header">
+              <h2>修改密码</h2>
+            </div>
+            <div class="form-group">
+              <label>旧密码</label>
+              <input type="password" v-model="passwordForm.oldPassword">
+            </div>
+            <div class="form-group">
+              <label>新密码</label>
+              <input type="password" v-model="passwordForm.newPassword">
+            </div>
+            <button class="btn" @click="changePassword">修改密码</button>
+            <div v-if="passwordMsg" class="message" :class="passwordMsgType">{{ passwordMsg }}</div>
+          </div>
+        </div>
+
+        <!-- ================= 课程浏览面板 ================= -->
+        <div v-if="currentMenu === 'courses'">
+          <div class="card">
+            <div class="card-header">
+              <h2>课程列表</h2>
+            </div>
+            <div class="filter-bar">
+              <input type="text" v-model="keyword" placeholder="课程名称/教师/描述关键词">
+              <input type="number" v-model="minCredit" placeholder="最低学分" style="width: 100px;">
+              <input type="number" v-model="maxCredit" placeholder="最高学分" style="width: 100px;">
+              <button class="btn-sm" @click="searchCourses">搜索</button>
+            </div>
+            <div v-if="coursesLoading" class="loading">加载中...</div>
+            <table v-else>
+              <thead>
+              <tr><th>课程编号</th><th>课程名称</th><th>学分</th><th>教师</th><th>时间地点</th><th>容量/已选</th><th>操作</th></tr>
+              </thead>
+              <tbody>
+              <tr v-for="c in coursesList" :key="c.id">
+                <td>{{ c.courseCode }}</td>
+                <td>{{ c.name }}</td>
+                <td>{{ c.credit }}</td>
+                <td>{{ c.teacher }}</td>
+                <td>{{ c.schedule }}</td>
+                <td>{{ c.selectedCount }}/{{ c.capacity }}</td>
+                <td>
+                  <button v-if="!isEnrolled(c.id)" class="btn-sm" @click="enroll(c.id)">选课</button>
+                  <span v-else class="status-badge">已选</span>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+            <div class="pagination">
+              <button class="page-btn" :disabled="coursePage === 0" @click="coursePage--">上一页</button>
+              <span>第 {{ coursePage+1 }} / {{ courseTotalPages }} 页</span>
+              <button class="page-btn" :disabled="coursePage >= courseTotalPages-1" @click="coursePage++">下一页</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= 我的选课面板 ================= -->
+        <div v-if="currentMenu === 'myEnrollments'">
+          <div class="card">
+            <div class="card-header">
+              <h2>已选课程</h2>
+              <button class="btn btn-secondary" @click="loadMyEnrollments">刷新</button>
+            </div>
+            <div v-if="myEnrollmentsLoading" class="loading">加载中...</div>
+            <table v-else>
+              <thead>
+              <tr><th>课程编号</th><th>课程名称</th><th>学分</th><th>教师</th><th>时间地点</th><th>操作</th></tr>
+              </thead>
+              <tbody>
+              <tr v-for="c in myEnrollmentsList" :key="c.id">
+                <td>{{ c.courseCode }}</td>
+                <td>{{ c.name }}</td>
+                <td>{{ c.credit }}</td>
+                <td>{{ c.teacher }}</td>
+                <td>{{ c.schedule }}</td>
+                <td>
+                  <button class="btn-sm btn-danger" @click="dropCourse(c.id)">退课</button>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ================= 个人课表面板 ================= -->
+        <div v-if="currentMenu === 'timetable'">
+          <div class="card">
+            <div class="card-header">
+              <h2>课程表</h2>
+              <button class="btn btn-sm" @click="loadTimetable">刷新</button>
+            </div>
+            <div v-if="timetableLoading" class="loading">加载中...</div>
+            <div v-else>
+              <table class="timetable-table">
+                <thead>
+                <tr><th>节次</th><th>星期一</th><th>星期二</th><th>星期三</th><th>星期四</th><th>星期五</th></tr>
+                </thead>
+                <tbody>
+                <tr v-for="section in maxSection" :key="section">
+                  <td class="section-col">第 {{ section }} 节</td>
+                  <td v-for="day in weekDays" :key="day">
+                    <div class="course-cell">{{ getCourseName(day, section) }}</div>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= 成绩查询面板 ================= -->
+        <div v-if="currentMenu === 'grades'">
+          <div class="card">
+            <div class="card-header">
+              <h2>成绩查询</h2>
+              <div class="filter-bar">
+                <input type="text" v-model="gradeYear" placeholder="年份">
+                <button class="btn-sm" @click="loadGrades">查询</button>
+              </div>
+            </div>
+            <div v-if="gradesLoading" class="loading">加载中...</div>
+            <table v-else>
+              <thead>
+              <tr><th>课程名称</th><th>课程编号</th><th>学分</th><th>平时成绩</th><th>期末成绩</th><th>总评</th><th>年份</th></tr>
+              </thead>
+              <tbody>
+              <tr v-for="g in gradesList" :key="g.enrollmentId">
+                <td>{{ g.courseName }}</td>
+                <td>{{ g.courseCode }}</td>
+                <td>{{ g.credit }}</td>
+                <td>{{ g.regularGrade || '-' }}</td>
+                <td>{{ g.examGrade || '-' }}</td>
+                <td>{{ g.grade || '-' }}</td>
+                <td>{{ g.year || '-' }}</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --------------------------------------------------------------
+  // Axios 实例配置：统一 baseURL 及请求/响应拦截器
+  // --------------------------------------------------------------
+  const api = axios.create({ baseURL: '' });
+  // 请求拦截器：自动附加 JWT Token
+  api.interceptors.request.use(config => {
+    const token = localStorage.getItem('jwt_token');
+    if (token) config.headers['Authorization'] = `Bearer ${token}`;
+    return config;
+  });
+  // 响应拦截器：处理 401 未授权，自动跳转登录页
+  api.interceptors.response.use(
+          res => res,
+          err => {
+            if (err.response && err.response.status === 401) {
+              localStorage.clear();
+              window.location.href = '/index.html';
+            }
+            return Promise.reject(err);
+          }
+  );
+
+  new Vue({
+    el: '#app',
+    data: {
+      // 当前登录用户名
+      username: localStorage.getItem('username') || '学生',
+      // 当前选中的菜单项
+      currentMenu: 'profile',
+
+      // ---------- 个人信息模块 ----------
+      profile: {},           // 学生个人信息
+      editMode: false,      // 是否处于编辑模式
+      editProfile: {},      // 编辑时的临时对象
+      profileLoading: false,
+      passwordForm: { oldPassword: '', newPassword: '' },
+      passwordMsg: '',
+      passwordMsgType: '',
+
+      // ---------- 课程浏览模块 ----------
+      coursesList: [],
+      coursePage: 0,
+      courseTotalPages: 0,
+      courseFilter: { name: '', teacher: '' },
+      coursesLoading: false,
+      keyword: '',
+      minCredit: null,
+      maxCredit: null,
+
+      // ---------- 我的选课模块 ----------
+      myEnrollmentsList: [],
+      myEnrollmentsLoading: false,
+
+      // ---------- 课表模块 ----------
+      timetableItems: [],    // 课表原始数据 (包含 day, startSection, endSection, courseName)
+      timetableLoading: false,
+      weekDays: ['周一', '周二', '周三', '周四', '周五'],
+      maxSection: 12,        // 最大节次，动态计算
+
+      // ---------- 成绩模块 ----------
+      gradesList: [],
+      gradeYear: '',
+      gradesLoading: false
+    },
+
+    // 监听分页页码变化，自动重新加载课程列表
+    watch: {
+      coursePage() { this.searchCourses(); }
+    },
+
+    mounted() {
+      // 页面初始化加载所有必要数据
+      this.loadProfile();
+      this.searchCourses();
+      this.loadMyEnrollments();
+      this.loadTimetable();
+      this.loadGrades();
+    },
+
+    methods: {
+      // ========== 通用 ==========
+      /** 退出登录，清除本地存储并跳转首页 */
+      logout() {
+        localStorage.clear();
+        window.location.href = '/index.html';
+      },
+
+      // ========== 个人信息 API ==========
+      /** 获取学生个人档案 */
+      async loadProfile() {
+        this.profileLoading = true;
+        try {
+          const res = await api.get('/api/student/profile');
+          this.profile = res.data;
+          this.editProfile = { ...res.data };
+        } catch (err) {
+          console.error(err);
+          alert('加载个人信息失败');
+        } finally {
+          this.profileLoading = false;
+        }
+      },
+      /** 更新个人档案 */
+      async updateProfile() {
+        try {
+          const res = await api.put('/api/student/profile', this.editProfile);
+          this.profile = res.data;
+          this.editMode = false;
+          alert('修改成功');
+        } catch (err) {
+          alert('修改失败');
+        }
+      },
+      /** 修改密码 */
+      async changePassword() {
+        try {
+          await api.put('/api/student/password', this.passwordForm);
+          this.passwordMsg = '密码修改成功，请重新登录';
+          this.passwordMsgType = 'success-msg';
+          setTimeout(() => { this.logout(); }, 1500);
+        } catch (err) {
+          this.passwordMsg = err.response?.data?.message || '修改失败';
+          this.passwordMsgType = 'error-msg';
+        }
+      },
+
+      // ========== 课程浏览 API ==========
+      /** 搜索课程（支持名称/教师筛选，分页） */
+      async searchCourses() {
+        this.coursesLoading = true;
+        try {
+          const params = {
+            page: this.coursePage,
+            size: 10,
+            keyword: this.keyword || null,
+            minCredit: this.minCredit || null,
+            maxCredit: this.maxCredit || null
+          };
+          const res = await api.get('/api/courses', { params });
+          this.coursesList = res.data.content;
+          this.courseTotalPages = res.data.totalPages;
+        } catch (err) {
+          console.error(err);
+          alert('搜索失败');
+        } finally {
+          this.coursesLoading = false;
+        }
+      },
+      /** 判断当前课程是否已被选 */
+      isEnrolled(courseId) {
+        return this.myEnrollmentsList.some(c => c.id === courseId);
+      },
+      /** 选课操作 */
+      async enroll(courseId) {
+        try {
+          await api.post(`/api/enrollments?courseId=${courseId}`);
+          alert('选课成功');
+          this.searchCourses();         // 刷新课程列表中的已选状态
+          this.loadMyEnrollments();     // 刷新我的选课列表
+          this.loadTimetable();         // 刷新课表
+        } catch (err) {
+          alert(err.response?.data?.message || '选课失败');
+        }
+      },
+
+      // ========== 我的选课 API ==========
+      /** 加载已选课程列表 */
+      async loadMyEnrollments() {
+        this.myEnrollmentsLoading = true;
+        try {
+          const res = await api.get('/api/enrollments/my');
+          this.myEnrollmentsList = res.data;
+        } catch (err) {
+          console.error(err);
+        } finally {
+          this.myEnrollmentsLoading = false;
+        }
+      },
+      /** 退课操作 */
+      async dropCourse(courseId) {
+        if (!confirm('确定退课吗？')) return;
+        try {
+          await api.delete(`/api/enrollments/${courseId}`);
+          alert('退课成功');
+          this.loadMyEnrollments();
+          this.searchCourses();
+          this.loadTimetable();
+        } catch (err) {
+          alert(err.response?.data?.message || '退课失败');
+        }
+      },
+
+      // ========== 课表 API ==========
+      /** 加载个人课表数据 */
+      async loadTimetable() {
+        this.timetableLoading = true;
+        try {
+          const res = await api.get('/api/enrollments/timetable');
+          this.timetableItems = res.data;
+          this.updateMaxSection();
+        } catch (err) {
+          console.error(err);
+        } finally {
+          this.timetableLoading = false;
+        }
+      },
+      /** 根据已选课程动态计算最大节次（用于渲染表格行数） */
+      updateMaxSection() {
+        let max = 0;
+        this.timetableItems.forEach(item => {
+          if (item.endSection > max) max = item.endSection;
+        });
+        this.maxSection = max > 0 ? max : 12;
+      },
+      /** 根据星期和节次获取课程显示名称（课表填充逻辑） */
+      getCourseName(day, section) {
+        const item = this.timetableItems.find(i =>
+                i.day === day && i.startSection <= section && i.endSection >= section
+        );
+        if (item) {
+          // 仅在课程起始节次显示课程名，其余节次显示“↳”表示延续
+          return section === item.startSection ? item.courseName : '↳';
+        }
+        return '';
+      },
+
+      // ========== 成绩查询 API ==========
+      /** 加载成绩（支持按年份筛选） */
+      async loadGrades() {
+        this.gradesLoading = true;
+        try {
+          const params = {};
+          if (this.gradeYear) params.year = this.gradeYear;
+          const res = await api.get('/api/grades', { params });
+          this.gradesList = res.data;
+        } catch (err) {
+          console.error(err);
+        } finally {
+          this.gradesLoading = false;
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>
